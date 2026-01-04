@@ -5,6 +5,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import { setupSockets } from './sockets';
 import connectDB from './db';
+import authRoutes from './routes/auth.routes';
 
 dotenv.config();
 
@@ -31,6 +32,9 @@ const io = new Server(httpServer, {
     credentials: true,
   },
 });
+
+// Auth routes
+app.use('/api/auth', authRoutes);
 
 // Setup socket handlers
 setupSockets(io);

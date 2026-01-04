@@ -10,6 +10,24 @@ const UserSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  email: {
+    type: String,
+    unique: true,
+    sparse: true, // Allows null/undefined for OAuth users
+    lowercase: true,
+  },
+  password: {
+    type: String, // bcrypt hashed, only for email auth users
+  },
+  isVerified: {
+    type: Boolean,
+    default: false,
+  },
+  authProvider: {
+    type: String,
+    enum: ['email', 'discord', 'google'],
+    default: 'email',
+  },
   about: String,
   linkedin: String,
   twitter: String,
