@@ -35,10 +35,28 @@ export function setupSockets(io: Server) {
 
       // Backend Persistence Logic: Fetch/Upsert User
       try {
-        let user = await User.findOne({ userId });
+        // Use findOneAndUpdate with upsert to atomically find or create user
+        const user = await User.findOneAndUpdate(
+          { userId },
+          { 
+            $setOnInsert: { 
+              userId,
+              username: userName,
+              about: userProfile?.about || '',
+              linkedin: userProfile?.linkedin,
+              twitter: userProfile?.twitter,
+              portfolio: userProfile?.portfolio,
+              github: userProfile?.github,
+            },
+            $set: {
+              lastSeen: Date.now(),
+            }
+          },
+          { upsert: true, new: true }
+        );
         
         if (user) {
-          // If user exists in DB, use their stored profile as source of truth
+          // Use stored profile as source of truth
           userName = user.username;
           userProfile = {
             username: user.username,
@@ -48,17 +66,6 @@ export function setupSockets(io: Server) {
             portfolio: user.portfolio || undefined,
             github: user.github || undefined,
           };
-        } else {
-          // New user, save them to DB
-          await User.create({
-            userId,
-            username: userName,
-            about: userProfile?.about || '',
-            linkedin: userProfile?.linkedin,
-            twitter: userProfile?.twitter,
-            portfolio: userProfile?.portfolio,
-            github: userProfile?.github,
-          });
         }
       } catch (err) {
         console.error('Error fetching/saving user:', err);
