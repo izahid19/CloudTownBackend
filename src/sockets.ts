@@ -28,6 +28,14 @@ export function setupSockets(io: Server) {
     socket.on('joinRoom', async (data: JoinRoomData) => {
       let { roomId, userId, userName, userImage, userProfile } = data;
 
+      if (userName && /\s/.test(userName)) {
+        userName = userName.replace(/\s/g, '');
+      }
+      
+      if (userProfile && userProfile.username && /\s/.test(userProfile.username)) {
+        userProfile.username = userProfile.username.replace(/\s/g, '');
+      }
+
       if (!roomId || !userId || !userName) {
         socket.emit('error', { message: 'Invalid join data' });
         return;
@@ -166,6 +174,10 @@ export function setupSockets(io: Server) {
     // Update Profile
     socket.on('updateProfile', async (profile: Player['profile']) => {
       if (!currentRoom || !currentUserId) return;
+
+      if (profile && profile.username && /\s/.test(profile.username)) {
+        profile.username = profile.username.replace(/\s/g, '');
+      }
 
       const player = sessionManager.updatePlayer(currentRoom, currentUserId, {
         profile,

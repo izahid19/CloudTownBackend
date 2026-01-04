@@ -42,6 +42,11 @@ router.post('/register', async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
+    if (/\s/.test(username)) {
+      res.status(400).json({ error: 'Username cannot contain spaces' });
+      return;
+    }
+
     // Check if username already exists (case-insensitive)
     const existingUsername = await User.findOne({ 
       username: { $regex: new RegExp(`^${username}$`, 'i') },
