@@ -130,7 +130,31 @@ export function setupSockets(io: Server) {
       console.log(`[Socket] ${userName} joined room ${roomId}`);
     });
 
-    // ... (move handler unchanged)
+    // Handle player movement
+    socket.on('move', (data: MovePlayerData) => {
+      if (!currentRoom || !currentUserId) return;
+
+      const player = sessionManager.updatePlayer(currentRoom, currentUserId, {
+        x: data.x,
+        y: data.y,
+        direction: data.direction,
+        isMoving: data.isMoving,
+      });
+
+      if (player) {
+        // Broadcast to all other players in the room
+        socket.to(currentRoom).emit('playerMoved', {
+          id: currentUserId,
+          name: player.name,
+          image: player.image,
+          x: player.x,
+          y: player.y,
+          direction: player.direction,
+          isMoving: player.isMoving,
+          profile: player.profile,
+        });
+      }
+    });
 
     // Update Profile
     socket.on('updateProfile', async (profile: Player['profile']) => {
