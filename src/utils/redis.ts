@@ -1,10 +1,20 @@
 import { Redis } from '@upstash/redis';
 
-// Initialize Redis client
-const redis = new Redis({
-  url: process.env.UPSTASH_REDIS_REST_URL!,
-  token: process.env.UPSTASH_REDIS_REST_TOKEN!,
-});
+// Lazy initialization to ensure env vars are loaded
+let redis: Redis | null = null;
+
+function getRedis(): Redis {
+  if (!redis) {
+    if (!process.env.UPSTASH_REDIS_REST_URL || !process.env.UPSTASH_REDIS_REST_TOKEN) {
+      throw new Error('Redis environment variables not configured. Add UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN to your .env file.');
+    }
+    redis = new Redis({
+      url: process.env.UPSTASH_REDIS_REST_URL,
+      token: process.env.UPSTASH_REDIS_REST_TOKEN,
+    });
+  }
+  return redis;
+}
 
 const OTP_EXPIRY_SECONDS = 600; // 10 minutes
 const RATE_LIMIT_SECONDS = 120; // 2 minutes
@@ -14,11 +24,11 @@ const RATE_LIMIT_SECONDS = 120; // 2 minutes
  */
 export async function setOTP(email: string, otp: string): Promise<void> {
   const key = `otp:${email.toLowerCase()}`;
-  await redis.set(key, otp, { ex: OTP_EXPIRY_SECONDS });
+  await getRedis().set(key, otp, { ex: OTP_EXPIRY_SECONDS });
   
   // Also set rate limit key
   const rateLimitKey = `otp_rate:${email.toLowerCase()}`;
-  await redis.set(rateLimitKey, '1', { ex: RATE_LIMIT_SECONDS });
+  await getRedis().set(rateLimitKey, '1', { ex: RATE_LIMIT_SECONDS });
 }
 
 /**
@@ -26,7 +36,7 @@ export async function setOTP(email: string, otp: string): Promise<void> {
  */
 export async function getOTP(email: string): Promise<string | null> {
   const key = `otp:${email.toLowerCase()}`;
-  return await redis.get(key);
+  return await getRedis().get(key);
 }
 
 /**
@@ -34,7 +44,7 @@ export async function getOTP(email: string): Promise<string | null> {
  */
 export async function deleteOTP(email: string): Promise<void> {
   const key = `otp:${email.toLowerCase()}`;
-  await redis.del(key);
+  await getRedis().del(key);
 }
 
 /**
@@ -43,7 +53,7 @@ export async function deleteOTP(email: string): Promise<void> {
  */
 export async function getResendCooldown(email: string): Promise<number> {
   const rateLimitKey = `otp_rate:${email.toLowerCase()}`;
-  const ttl = await redis.ttl(rateLimitKey);
+  const ttl = await getRedis().ttl(rateLimitKey);
   return ttl > 0 ? ttl : 0;
 }
 
@@ -52,7 +62,7 @@ export async function getResendCooldown(email: string): Promise<number> {
  */
 export async function setResetToken(email: string, token: string): Promise<void> {
   const key = `reset:${token}`;
-  await redis.set(key, email.toLowerCase(), { ex: 3600 }); // 1 hour expiry
+  await getRedis().set(key, email.toLowerCase(), { ex: 3600 }); // 1 hour expiry
 }
 
 /**
@@ -60,7 +70,7 @@ export async function setResetToken(email: string, token: string): Promise<void>
  */
 export async function getResetTokenEmail(token: string): Promise<string | null> {
   const key = `reset:${token}`;
-  return await redis.get(key);
+  return await getRedis().get(key);
 }
 
 /**
@@ -68,7 +78,7 @@ export async function getResetTokenEmail(token: string): Promise<string | null> 
  */
 export async function deleteResetToken(token: string): Promise<void> {
   const key = `reset:${token}`;
-  await redis.del(key);
+  await getRedis().del(key);
 }
 
 /**
@@ -85,4 +95,4 @@ export function generateResetToken(): string {
   return Math.random().toString(36).substring(2) + Date.now().toString(36);
 }
 
-export default redis;
+export { getRedis };
