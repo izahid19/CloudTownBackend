@@ -42,6 +42,16 @@ router.post('/register', async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
+    // Check if username already exists (case-insensitive)
+    const existingUsername = await User.findOne({ 
+      username: { $regex: new RegExp(`^${username}$`, 'i') },
+      isVerified: true 
+    });
+    if (existingUsername) {
+      res.status(400).json({ error: 'Username already taken' });
+      return;
+    }
+
     // Check if email already exists
     const existingUser = await User.findOne({ email: email.toLowerCase() });
     if (existingUser) {
